@@ -21,8 +21,6 @@ def fn_extractValidRecordsOfAJob(strJobDir):
                 strDemodFile = os.path.join(strJobDir, os.path.join(strDemodName, strDemodName + ".csv"))
                 fn_extractValidRecords(oTstmps[0], oTstmps[1], strDemodFile)
 
-
-
 def fn_extractValidRecords(pdTstmpStart, pdTstmpEnd, strCsvFile):
         pdDf = pd.read_csv(strCsvFile)
         strpdSeriesFilter = pdDf.loc[:, "RECTIME"]
@@ -39,6 +37,15 @@ def fn_getValidPeriod(nOrdinal, oETWorkSchRep):
         opdTstmpEnd = pd.Timestamp(oElementReceivingTstmp.find("receivingEndTime").text)
         return [opdTstmpStart, opdTstmpEnd]
 
+# Set a map between part names and  lists of features
+# Along with a list of part names to set the ordinary of features
+def fn_splitStatusApart(mapNamePart, strParts, strBoolFeatures, strStatusFile, strStatusDir):
+        pdDfStatus = pd.read_csv(strStatusFile)
+        pdDfIndexes = pdDfStatus > 1
+        for i in range(len(strParts)):
+
+
+def fn_filterStatus(strFeatures, strpdDfStatus)
 
 
 
