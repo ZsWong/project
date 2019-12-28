@@ -41,7 +41,7 @@ def fn_buildJobFromZip2Dir(strZipFile, strJobDir):
 
 if __name__ == "__main__":
         g_strZipsDir = "/home/zswong/workspace/data/zips"
-        g_strJobsDir = "/home/zswong/workspace/data/jobs"
+        g_strJobsDir = "/home/zswong/workspace/station_code/jobs"
         '''
         if os.path.exists(g_strJobsDir):
                 shutil.rmtree(g_strJobsDir)

@@ -4,7 +4,7 @@ import secretary
 import cleaner
 import engineer
 
-g_strJobsDir = "/home/zswong/workspace/data/jobs"        
+g_strJobsDir = "/home/zswong/workspace/station_code/jobs"        
 strParts = ["input", "carrierlock", "bitlock"]
 mapNamePart = {"input": ["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"],
         "carrierlock": ["DEMOD_CARRIERLOCK", "DEMOD_CARRIEROFFSET"],
