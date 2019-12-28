@@ -18,5 +18,6 @@ strBinaryFeatures = ["DEMOD_CARRIERLOCK", "DEMOD_BITLOCK", "DEMOD_BITLOCKQCHL",
 
 for name in os.listdir(g_strJobsDir):
         strJobDir = os.path.join(g_strJobsDir, name)
+        engineer.fn_extractValidRecordsOfAJob(strJobDir)
         engineer.fn_constructSectionsOfAJob(mapNamePart, strParts, strBinaryFeatures, strJobDir)
         engineer.fn_generateSamplesFromAJob(10, strJobDir)

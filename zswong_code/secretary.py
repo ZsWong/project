@@ -13,6 +13,8 @@ def fn_buildJobsDirFromZipsDir(strZipsDir, strJobsDir):
                 strZipFile = os.path.join(strZipsDir, name)
                 strZipName, _ = os.path.splitext(name)
                 strJobDir = os.path.join(strJobsDir, strZipName)
+                if os.path.exists(strJobDir):
+                        continue
                 os.mkdir(strJobDir)
                 fn_buildJobFromZip2Dir(strZipFile, strJobDir)
                 
@@ -40,9 +42,11 @@ def fn_buildJobFromZip2Dir(strZipFile, strJobDir):
 if __name__ == "__main__":
         g_strZipsDir = "/home/zswong/workspace/data/zips"
         g_strJobsDir = "/home/zswong/workspace/data/jobs"
+        '''
         if os.path.exists(g_strJobsDir):
                 shutil.rmtree(g_strJobsDir)
         os.mkdir(g_strJobsDir)
+        '''
         fn_buildJobsDirFromZipsDir(g_strZipsDir, g_strJobsDir)
                                         
 
