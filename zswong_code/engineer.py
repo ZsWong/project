@@ -8,39 +8,34 @@ import xml.etree.ElementTree as ET
 from functools import partial
 
 def fn_extractValidRecordsOfAJob(strJobDir):
-        nOrdinals = []
+        strWorkSchRepXMLFile = os.path.join(strJobDir, "WorkSch_TASK.xml")
+        oETWorkSchRep = ET.parse(strWorkSchRepXMLFile)
+        pdTstmps = fn_getValidPeriod(oETWorkSchRep)
+
         for name in os.listdir(strJobDir):
                 if "Demod" in name:
-                        n = int(name[5:])
-                        nOrdinals.append(n)
-        nnpNArrOrdinal = np.array(nOrdinals)
-        nnpNArrOrdinal.sort()
+                        strStatusDir = os.path.join(strJobDir, name)
+                        fn_extractValidRecords(pdTstmps[0], pdTstmps[1], strStatusDir)
 
-        strWorkSchRepXMLFile = os.path.join(strJobDir, "WorkSchRep.xml")
-        oETWorkSchRep = ET.parse(strWorkSchRepXMLFile)
-        for n in range(nnpNArrOrdinal.size):
-                oTstmps = fn_getValidPeriod(n, oETWorkSchRep)
-                strDemodName = "Demod" + str(nnpNArrOrdinal[n])
-                strDemodFile = os.path.join(strJobDir, os.path.join(strDemodName, "status.csv"))
-                fn_extractValidRecords(oTstmps[0], oTstmps[1], strDemodFile)
-
-def fn_extractValidRecords(pdTstmpStart, pdTstmpEnd, strCsvFile):
-        pdDf = pd.read_csv(strCsvFile)
-        if not "RECTIME" in pdDf.columns:
+def fn_extractValidRecords(pdTstmpStart, pdTstmpEnd, strStatusDir):
+        strStatusFile = os.path.join(strStatusDir, "status.csv")
+        strValidFile = os.path.join(strStatusDir, "valid")
+        if os.path.exists(strValidFile):
                 return
-        strpdSeriesFilter = pdDf.loc[:, "RECTIME"]
-        pdTstmpSeriesFilter = strpdSeriesFilter.apply(lambda t: pd.Timestamp(t))
-        pdDf.loc[:, "RECTIME"] = pdTstmpSeriesFilter
-        pdDfFiltered = pdDf.loc[(pdDf["RECTIME"] >= pdTstmpStart) & (pdDf["RECTIME"] <= pdTstmpEnd), :]
-        pdDfFiltered.drop(columns = ["RECTIME"], inplace = True)
-        pdDfFiltered.to_csv(strCsvFile)
 
-def fn_getValidPeriod(nOrdinal, oETWorkSchRep):
-        strChannelHierarchy = "/content/Result/receivingResult/channel"
-        oElementChannel = oETWorkSchRep.findall(strChannelHierarchy)[nOrdinal]
-        oElementReceivingTstmp = oElementChannel.findall("receivingTimes")[-1]
-        opdTstmpStart = pd.Timestamp(oElementReceivingTstmp.find("receivingStartTime").text)
-        opdTstmpEnd = pd.Timestamp(oElementReceivingTstmp.find("receivingEndTime").text)
+        pdDfStatus = pd.read_csv(strStatusFile)
+        strpdSeriesFilter = pdDfStatus.loc[:, "RECTIME"]
+        pdTstmpSeriesFilter = strpdSeriesFilter.apply(lambda t: pd.Timestamp(t))
+        pdDfFiltered = pdDfStatus.loc[(pdTstmpSeriesFilter >= pdTstmpStart) & (pdTstmpSeriesFilter <= pdTstmpEnd), :]
+        pdDfFiltered.to_csv(strStatusFile)
+        with open(strValidFile, "wb") as f:
+                f.write()
+
+def fn_getValidPeriod(oETWorkSchRep):
+         strReceivingStartTime = "/content/equipmentInfo/receivingStartTime"
+         strReceivingEndTime = "/content/equipmentInfo/receivingEndTime"
+         opdTstmpStart = pd.Timestamp(oETWorkSchRep.find(strReceivingStartTime).text)
+         opdTstmpEnd = pd.Timestamp(oETWorkSchRep.find(strReceivingEndTime).text)
         return [opdTstmpStart, opdTstmpEnd]
 
 def fn_constructSectionsOfAJob(mapNamePart, strParts, strBinaryFeatures, strJobDir):
@@ -91,54 +86,66 @@ def fn_regularBoolFeatures(strBinaryFeatures, pdDfStatus):
                 pdSeries = pdSeries.apply(partial(fn_regular, nMin))
                 pdDfStatus.loc[:, feature] = pdSeries
 
-def fn_generateSamplesFromAJob(nSamples, strJobDir):
+"""
+It's better to contain all records.
+So there is no need in getting the number of samples as
+it's input parameter.
+"""
+"""
+callable object
+"""
+def fn_isAllTrue(bnpNArr):
+        for  b in bnpNArr:
+                if not b:
+                        return False
+        return True
+def fn_generateSamplesFromAJob(strJobDir):
         strSamplesDir = os.path.join(strJobDir, "samples")
         if os.path.exists(strSamplesDir):
                 shutil.rmtree(strSamplesDir)
-        strPositiveDir = os.path.join(strSamplesDir, "positive")
-        strNegativeDir = os.path.join(strSamplesDir, "negtive")
-        os.makedirs(strPositiveDir)
-        os.makedirs(strNegativeDir)
-        
+        strPositiveSectionsDir = os.path.join(strSamplesDir, "positive/sections")
+        strNegativeSectionsDir = os.path.join(strSamplesDir, "negtive/sections")
+        os.makedirs(strPositiveSectionsDir)
+        os.makedirs(strNegativeSectionsDir)
+        """
+        name is like "Demodx"
+        """
         for name in os.listdir(strJobDir):
                 if "Demod" in name:
                         strStatusDir = os.path.join(strJobDir, name)
-                        if fn_isFramesync(strStatusDir):
-                                fn_generateSampleFromAStatusDir(10, strStatusDir, strPositiveDir)
-                        else:
-                                fn_generateSampleFromAStatusDir(10, strStatusDir, strNegativeDir)
-
-def fn_generateSampleFromAStatusDir(nSamples, strStatusDir, strDstDir):
-        strDemodName = os.path.basename(strStatusDir)
-
-        strDstSectionsDir = os.path.join(strDstDir, strDemodName + "/sections")
-        os.makedirs(strDstSectionsDir)
-
+                        pdDfStatus = pd.read_csv(strStatusDir)
+                        bnpNArrFilter = (pdDfStatus.loc[:, "DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"] == 1).values
+                        bnpNArrFilter = np.apply_along_axis(fn_isAllTrue, 0, bnpNArrFilter)
+                        fn_generateSamplesFromAStatus(bnpNArrFilter, strStatusDir, strSamplesDir)
+def fn_generateSamplesFromAStatus(bnpNArrFilter, strStatusDir, strPositiveDir, strNegativeDir):
         strSectionsDir = os.path.join(strStatusDir, "sections")
         for name in os.listdir(strSectionsDir):
-                strSectionName = os.path.splitext(name)[0]
-                strSectionDir = os.path.join(strSectionsDir, strSectionName)
-                pdDfStatus = pd.read_csv(os.path.join(strSectionDir, "status.csv"))
+                strSectionDir = os.path.join(strSectionsDir, name)
+                strPositiveSectionDir = os.path.join(strPositiveDir, name)
+                if os.path.exists(strPositiveSectionDir):
+                        os.mkdir(strPositiveSectionDir)
+                strNegativeSectionDir = os.path.join(strNegativeDir, name)
+                if os.path.exists(strNegativeSectionDir):
+                        os.mkdir(strNegativeSectionDir)
+                fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strPositiveSectionDir, strNegativeSectionDir)
+def fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strPositiveSectionDir, strNegativeSectionDir):
+        strSectionFile = os.path.join(strSectionDir, "status.csv")
+        pdDfStatus = pd.read_csv(strSectionFile)
 
-                nnpIndexes = np.linspace(0, pdDfStatus.shape[0], nSamples, endpoint = False, dtype = np.int)
-                npNArrStatus = pdDfStatus.iloc[nnpIndexes, :].values
+        strPositiveSectionStatusFile = os.path.join(strPositiveSectionDir, "samples.npy")
+        npNArrPositive = np.load(strPositiveSectionStatusFile)
+        npNArrPositiveRecords = pdDfStatus.loc[bnpNArrFilter, :].values[:, 1:]
+        npNArrPositive  = np.concatenate((npNArrPositive, npNArrPositiveRecords), axis=0)
+        np.save(strPositiveSectionStatusFile, npNArrPositive)
 
-                strDstSectionDir = os.path.join(strDstSectionsDir, strSectionName)
-                os.mkdir(strDstSectionDir)
-                strNpyFile = os.path.join(strDstSectionDir, "status.npy")
-                np.save(strNpyFile, npNArrStatus)
+        strNegativeSectionStatusFile = os.path.join(strNegativeSectionDir, "samples.npy")
+        npNArrNegative = np.load(strNegativeveSectionStatusFile)
+        npNArrNegativeRecords = pdDfStatus.loc[~bnpNArrFilter, :].values[:, 1:]
+        npNArrNegative = np.concatenate((npNArrNegative, npNArrNegativeRecords), axis=0)
+        np.save(strNegativeSectionStatusFile, npNArrNegative)
                 
-def fn_isFramesync(strStatusDir):
-        strStatusFile = os.path.join(strStatusDir, "status.csv")
-        pdDf = pd.read_csv(strStatusFile)
-        bpdSeriesFramesyncStatus1 = pdDf["DPU_FRAMESYNCSTATUS1"]
-        bpdSeriesFramesyncStatus2 = pdDf["DPU_FRAMESYNCSTATUS2"]
-        if len(set(bpdSeriesFramesyncStatus1)) != 1 or len(set(bpdSeriesFramesyncStatus2)) != 1:
-                return False
-        return True 
-
 if __name__ == "__main__":
-        strJobDir = "/home/zswong/workspace/data/jobs/JOB201912184062170"
+        strJobDir = "/home/zswong/workspace/station_code/jobs/JOB20191218406217"
         strCsvFile = os.path.join(g_strJobDir, "Demod6/Demod6.csv")
         strSectionsDir = os.path.join(g_strJobDir, "Demod6/sections")
         fn_extractValidRecordsOfAJob(g_strJobDir)
@@ -152,6 +159,6 @@ if __name__ == "__main__":
         strBinaryFeatures = ["DEMOD_CARRIERLOCK", "DEMOD_BITLOCK", "DEMOD_BITLOCKQCHL", 
         "DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"]
         fn_constructSectionsOfAJob(mapNamePart, strParts, strBinaryFeatures, strJobDir)        
-        fn_generateSamplesFromAJob(10, strJobDir)
+        #fn_generateSamplesFromAJob(10, strJobDir)
 
 
