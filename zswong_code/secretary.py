@@ -2,6 +2,12 @@
         The duty of this module is to build initial content of jobs directory from zips directory.
         Without dealing with any professional work, it just build directory and extract files needed.
         If running it as a script, it will delete former jobs directory.
+        After the running of it, the jobs directory will contain files like below:
+        JOBXXXXXXXXXXXXXXX
+        -------Demodx
+        ------------status.csv
+        -------WorkSch_TASK.xml
+        The status.csv file contains many invalid records in demod
 """
 import os
 import zipfile
@@ -51,7 +57,7 @@ def fn_buildJobFromZip2Dir(strZipFile, strJobDir):
                                 strDemodName = "Demod" + strNumber
                                 strDemodDir = os.path.join(strJobDir, strDemodName)
                                 os.mkdir(strDemodDir)
-                                strDemodFile = os.path.join(strDemodDir,  "status.csv")
+                                strDemodFile = os.path.join(strDemodDir,  "raw_status.csv")
                                 with oZipFile.open(name) as f:
                                         with open(strDemodFile, "wb") as f1:
                                                 f1.write(f.read())
