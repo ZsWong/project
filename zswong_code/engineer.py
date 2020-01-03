@@ -99,36 +99,39 @@ def fn_generateSamplesFromAJob(strJobDir):
         for name in os.listdir(strJobDir):
                 if "Demod" in name:
                         strStatusDir = os.path.join(strJobDir, name)
-                        pdDfStatus = pd.read_csv(strStatusDir)
-                        bnpNArrFilter = (pdDfStatus.loc[:, "DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"] == 1).values
-                        bnpNArrFilter = np.apply_along_axis(fn_isAllTrue, 0, bnpNArrFilter)
+                        strValStatusFile = os.path.join(strStatusDir, "val_status.csv")
+                        pdDfValStatus = pd.read_csv(strValStatusFile)
+                        bnpNArrFilter = (pdDfValStatus.loc[:, ["DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"]] == 1).values
+                        bnpNArrFilter = np.apply_along_axis(fn_isAllTrue, 1, bnpNArrFilter)
                         fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strPositiveSectionsDir, strNegativeSectionsDir)
 def fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strPositiveSectionsDir, strNegativeSectionsDir):
         strSectionsDir = os.path.join(strStatusDir, "sections")
         for name in os.listdir(strSectionsDir):
                 strSectionDir = os.path.join(strSectionsDir, name)
                 strPositiveSectionDir = os.path.join(strPositiveSectionsDir, name)
-                if os.path.exists(strPositiveSectionDir):
+                if not os.path.exists(strPositiveSectionDir):
                         os.mkdir(strPositiveSectionDir)
                 strNegativeSectionDir = os.path.join(strNegativeSectionsDir, name)
-                if os.path.exists(strNegativeSectionDir):
+                if not os.path.exists(strNegativeSectionDir):
                         os.mkdir(strNegativeSectionDir)
                 fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strPositiveSectionDir, strNegativeSectionDir)
 def fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strPositiveSectionDir, strNegativeSectionDir):
         strSectionFile = os.path.join(strSectionDir, "status.csv")
-        pdDfStatus = pd.read_csv(strSectionFile)
+        pdDfSectionStatus = pd.read_csv(strSectionFile)
 
-        strPositiveSectionStatusFile = os.path.join(strPositiveSectionDir, "samples.npy")
-        npNArrPositive = np.load(strPositiveSectionStatusFile)
-        npNArrPositiveRecords = pdDfStatus.loc[bnpNArrFilter, :].values[:, 1:]
-        npNArrPositive  = np.concatenate((npNArrPositive, npNArrPositiveRecords), axis=0)
-        np.save(strPositiveSectionStatusFile, npNArrPositive)
+        strPositiveSectionSamplesFile = os.path.join(strPositiveSectionDir, "samples.npy")
+        npNArrPositiveSamples = pdDfSectionStatus.loc[bnpNArrFilter, :].values
+        if os.path.exists(strPositiveSectionSamplesFile):
+                npNArrPositiveFormerRecords = np.load(strPositiveSectionSamplesFile)
+                npNArrPositiveSamples  = np.concatenate((npNArrPositiveFormerRecords, npNArrPositiveSamples), axis=0)
+        np.save(strPositiveSectionSamplesFile, npNArrPositiveSamples)
 
-        strNegativeSectionStatusFile = os.path.join(strNegativeSectionDir, "samples.npy")
-        npNArrNegative = np.load(strNegativeveSectionStatusFile)
-        npNArrNegativeRecords = pdDfStatus.loc[~bnpNArrFilter, :].values[:, 1:]
-        npNArrNegative = np.concatenate((npNArrNegative, npNArrNegativeRecords), axis=0)
-        np.save(strNegativeSectionStatusFile, npNArrNegative)
+        strNegativeSectionSamplesFile = os.path.join(strNegativeSectionDir, "samples.npy")
+        npNArrNegativeSamples = pdDfSectionStatus.loc[~bnpNArrFilter, :].values
+        if os.path.exists(strNegativeSectionSamplesFile):
+                npNArrNegativeFormerRecords = np.load(strNegativeSectionSamplesFile)
+                npNArrNegativeSamples  = np.concatenate((npNArrNegativeFormerRecords, npNArrNegativeSamples), axis=0)
+        np.save(strNegativeSectionSamplesFile, npNArrNegativeSamples)
                 
 if __name__ == "__main__":
         strJobDir = "/home/zswong/workspace/station_code/jobs/JOB201912170654200"
@@ -137,7 +140,7 @@ if __name__ == "__main__":
         "bitlock": ["DEMOD_BITLOCK", "DEMOD_BITLOCKQCHL", "DEMOD_BITRATEOFFSET"]
         }
         strParts = ["input", "carrierlock", "bitlock"]
-        mapBinaryFeaturesAndValidNumber = {"DEMOD_CARRIERLOCK": 2}
+        mapBinaryFeaturesAndValidNumber = {"DEMOD_CARRIERLOCK": 2, "DPU_FRAMESYNCSTATUS1": 2, "DPU_FRAMESYNCSTATUS2": 2}
         #fn_regularBoolFeaturesOfAJob(mapBinaryFeaturesAndValidNumber, strJobDir)
         #fn_extractValidRecordsOfAJob(strJobDir)
         #fn_constructSectionsOfAJob(mapSectionsFeatures, strParts, strJobDir)
