@@ -13,6 +13,8 @@ import os
 import zipfile
 import shutil
 
+import numpy as np
+
 import re
 rePnWorkSchRep = re.compile(r"WorkSch_TASK")
 rePnDemod = re.compile(r"Status.*?Demod.*?\.csv")
@@ -62,14 +64,32 @@ def fn_buildJobFromZip2Dir(strZipFile, strJobDir):
                                         with open(strDemodFile, "wb") as f1:
                                                 f1.write(f.read())
 
+"""
+Input the type of samples needed to collect.
+"""
+def fn_collectSamplesFromJobs(strSamplesType, strSectionName, strJobsDir):
+        npNArrs = []
+        for name in os.listdir(strJobsDir):
+                strJobDir = os.path.join(strJobsDir, name)
+                npNArrs.append(fn_collectSamplesFromAJob(strSamplesType, strSectionName, strJobDir))
+        npNArrSamples = np.concatenate(npNArrs)
+        print(npNArrSamples.shape)
+        return npNArrSamples
+def fn_collectSamplesFromAJob(strSamplesType, strSectionName, strJobDir):
+        strSamplesDir = os.path.join(strJobDir, "samples")
+        strPositiveOrNegativeSamplesDir = os.path.join(strSamplesDir, strSamplesType)
+        strSectionSamplesDir = os.path.join(strPositiveOrNegativeSamplesDir, "sections/" + strSectionName)
+        strSamplesFile = os.path.join(strSectionSamplesDir, "samples.npy")
+        npNArrSamples = np.load(strSamplesFile)
+        print(npNArrSamples.shape)
+        return npNArrSamples
 
 
 if __name__ == "__main__":
-        g_strZipsDir = "/home/zswong/workspace/data/zips"
-        g_strJobsDir = "/home/zswong/workspace/station_code/jobs"
-        if os.path.exists(g_strJobsDir):
-                shutil.rmtree(g_strJobsDir)
-        os.mkdir(g_strJobsDir)
-        fn_buildJobsDirFromZipsDir(g_strZipsDir, g_strJobsDir)
-                                        
+        strZipsDir = "/home/zswong/workspace/data/zips"
+        strJobsDir = "/home/zswong/workspace/station_code/jobs"
+
+
+        print(fn_collectSamplesFromJobs("positive", "input", strJobsDir).shape)
+
 
