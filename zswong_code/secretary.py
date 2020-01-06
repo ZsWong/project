@@ -26,6 +26,9 @@ rePnNumber = re.compile(r"[0-9]+?")
 # You must make sure jobs directory is existing , so it can hold job directories
 # If some zip files already have  corresponding job directory, skip them.
 def fn_buildJobsDirFromZipsDir(strZipsDir, strJobsDir):
+        if os.path.exists(strJobsDir):
+                shutil.rmtree(strJobsDir)
+        os.mkdir(strJobsDir)
         for name in os.listdir(strZipsDir):
                 strZipFile = os.path.join(strZipsDir, name)
                 strZipName, _ = os.path.splitext(name)
@@ -88,8 +91,4 @@ def fn_collectSamplesFromAJob(strSamplesType, strSectionName, strJobDir):
 if __name__ == "__main__":
         strZipsDir = "/home/zswong/workspace/data/zips"
         strJobsDir = "/home/zswong/workspace/station_code/jobs"
-
-
-        print(fn_collectSamplesFromJobs("positive", "input", strJobsDir).shape)
-
 

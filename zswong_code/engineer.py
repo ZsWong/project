@@ -17,7 +17,7 @@ def fn_extractValidRecordsOfAJob(strJobDir):
                         strStatusDir = os.path.join(strJobDir, name)
                         fn_extractValidRecords(pdTstmps[0], pdTstmps[1], strStatusDir)
 def fn_extractValidRecords(pdTstmpStart, pdTstmpEnd, strStatusDir):
-        strRegStatusFile = os.path.join(strStatusDir, "reg_status.csv")
+        strRegStatusFile = os.path.join(strStatusDir, "culled_status.csv")
         pdDfRegStatus = pd.read_csv(strRegStatusFile)
         strpdSeriesFilter = pdDfRegStatus.loc[:, "RECTIME"]
         pdTstmpSeriesFilter = strpdSeriesFilter.apply(lambda t: pd.Timestamp(t))
@@ -72,6 +72,30 @@ def fn_regularBoolFeaturesOfAStatus(mapBinaryFeaturesAndValidNumber, strStatusDi
                 pdDfRawStatus.loc[:, feature] = pdSeriesResult
         strRegStatusFile = os.path.join(strStatusDir, "reg_status.csv")
         pdDfRawStatus.to_csv(strRegStatusFile, index = False)
+
+def fn_cullTimeEffectOfAJob(mapTypesAndTimeDepentFeatures, strJobDir):
+        for name in os.listdir(strJobDir):
+                if "Demod" in name:
+                        strStatusDir = os.path.join(strJobDir, name)
+                        fn_cullTimeEffectOfAStatus(mapTypesAndTimeDepentFeatures, strStatusDir)
+def fn_cullTimeEffectOfAStatus(mapTypesAndTimeDepentFeatures, strStatusDir):
+        strRegStatusFile = os.path.join(strStatusDir, "reg_status.csv")
+        pdDfRegStatus = pd.read_csv(strRegStatusFile)
+        pdDfCulledStatus = fn_countBadFrameInOneSec(mapTypesAndTimeDepentFeatures["counter"], pdDfRegStatus)
+        strCulledStatusFile = os.path.join(strStatusDir, "culled_status.csv")
+        pdDfCulledStatus.to_csv(strCulledStatusFile, index = False)
+def fn_countBadFrameInOneSec(strCounterFeatures, pdDfRegStatus):
+        pdDfBadFrame = pdDfRegStatus.loc[:, strCounterFeatures]
+        pdDfBadFrameCnted = pdDfBadFrame.rolling(2).apply(fn_sub)
+        pdDfRegStatus.loc[:,strCounterFeatures] = pdDfBadFrameCnted
+        return pdDfRegStatus
+def fn_sub(nWin):
+        if nWin.size == 1:
+                return nWin
+        elif nWin[1] < nWin[0]:
+                return nWin[1]
+        else:
+                return nWin[1] - nWin[0]
 """
 It's better to contain all records.
 So there is no need in getting the number of samples as
@@ -141,7 +165,14 @@ if __name__ == "__main__":
         }
         strParts = ["input", "carrierlock", "bitlock"]
         mapBinaryFeaturesAndValidNumber = {"DEMOD_CARRIERLOCK": 2, "DPU_FRAMESYNCSTATUS1": 2, "DPU_FRAMESYNCSTATUS2": 2}
+        mapTypesAndTimeDepentFeatures = {"counter": ["DPU_ERRORBITNUMBER1", "DPU_TOTALBITNUMBER1", "DPU_RSERRORBITNUMBER1", 
+        "DPU_ERRORBITNUMBER2", "DPU_TOTALBITNUMBER2", "DPU_ERRORBITNUMBER2", "DPU_RSERRORBITNUMBER2", 
+        "DEMOD_ERRORBITNUMBER", "DEMOD_ERRORBITNUMBERQCHL", "DEMOD_TOTALBITNUMBER", "DEMOD_TOTALBITNUMBERQCHL", 
+        "DEMOD_TOTALBITNUMBERJCHL", "DEMOD_ERRORBITNUMBERJCHL", 
+        "DEMOD_VITERBI1TOTALBITNUMBER", "DEMOD_VITERBI2TOTALBITNUMBER", "DEMOD_VITERBI1ERRORBITNUMBER", "DEMOD_VITERBI2ERRORBITNUMBER", 
+        "DRU_TASKNUMBER1", "DRU_TASKNUMBER2"]}
+        fn_cullTimeEffectOfAJob(mapTypesAndTimeDepentFeatures, strJobDir)
         #fn_regularBoolFeaturesOfAJob(mapBinaryFeaturesAndValidNumber, strJobDir)
         #fn_extractValidRecordsOfAJob(strJobDir)
         #fn_constructSectionsOfAJob(mapSectionsFeatures, strParts, strJobDir)
-        fn_generateSamplesFromAJob(strJobDir)
+        #fn_generateSamplesFromAJob(strJobDir)
