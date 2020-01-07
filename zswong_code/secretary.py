@@ -11,9 +11,11 @@
 """
 import os
 import zipfile
+import json
 import shutil
 
 import numpy as np
+import pandas as pd
 
 import re
 rePnWorkSchRep = re.compile(r"WorkSch_TASK")
@@ -87,8 +89,27 @@ def fn_collectSamplesFromAJob(strSamplesType, strSectionName, strJobDir):
         print(npNArrSamples.shape)
         return npNArrSamples
 
+"""
+"""
+def fn_outputLeftFeatures(strJsonFile, strDataBaseFile, strOutputFile):
+        with open(strJsonFile, "r") as f:
+                mapPartsAndFeatures = json.load(f)
+        pdSeriesAll = pd.read_csv(strDataBaseFile, squeeze=True, header=None) # header = None to make sure don't make "RECTIME" as the name of series
+        strListedFeatures = []
+        fn_extractPartsFromMap(mapPartsAndFeatures, strListedFeatures)
+        strLeftedFeatures = [strFeature for strFeature in pdSeriesAll.to_list() if strFeature not in strListedFeatures]
+        pdSeriesLeftedFeatures = pd.Series(strLeftedFeatures)
+        pdSeriesLeftedFeatures.to_csv(strOutputFile, index = False)
+def fn_extractPartsFromMap(mapPartsAndFeatures, strListedFeatures):
+        for _, item in mapPartsAndFeatures.items():
+                if isinstance(item, dict):
+                        fn_extractPartsFromMap(item, strListedFeatures)
+                else:
+                        assert(isinstance(item, list))
+                        strListedFeatures.extend(item)
 
 if __name__ == "__main__":
         strZipsDir = "/home/zswong/workspace/data/zips"
         strJobsDir = "/home/zswong/workspace/station_code/jobs"
 
+        fn_outputLeftFeatures("features.json", "features.csv", "left_features.csv")

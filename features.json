@@ -1,0 +1,6 @@
+{
+        "demod": {
+                "input":["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"],
+                "carrierlock": ["DEMOD_CARRIERLOCK", "DEMOD_CARRIEROFFSET"]
+        }
+}
