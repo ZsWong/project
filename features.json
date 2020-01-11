@@ -1,6 +1,5 @@
 {
-        "demod": {
-                "input":["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"],
-                "carrierlock": ["DEMOD_CARRIERLOCK", "DEMOD_CARRIEROFFSET"]
-        }
+        "input":["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"],
+        "carrierlock": ["DEMOD_CARRIERLOCK", "DEMOD_CARRIEROFFSET"],
+        "bitlock": ["DEMOD_BITLOCK", "DEMOD_BITLOCKQCHL", "DEMOD_BITRATEOFFSET"]
 }

@@ -113,49 +113,41 @@ def fn_generateSamplesFromAJob(strJobDir):
         strSamplesDir = os.path.join(strJobDir, "samples")
         if os.path.exists(strSamplesDir):
                 shutil.rmtree(strSamplesDir)
-        strPositiveSectionsDir = os.path.join(strSamplesDir, "positive/sections")
-        strNegativeSectionsDir = os.path.join(strSamplesDir, "negtive/sections")
-        os.makedirs(strPositiveSectionsDir)
-        os.makedirs(strNegativeSectionsDir)
+        strSamplesSectionsDir = os.path.join(strSamplesDir, "sections")
+        os.makedirs(strSamplesSectionsDir)
         """
         name is like "Demodx"
         """
-        for name in os.listdir(strJobDir):
-                if "Demod" in name:
-                        strStatusDir = os.path.join(strJobDir, name)
-                        strValStatusFile = os.path.join(strStatusDir, "val_status.csv")
-                        pdDfValStatus = pd.read_csv(strValStatusFile)
-                        bnpNArrFilter = (pdDfValStatus.loc[:, ["DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"]] == 1).values
-                        bnpNArrFilter = np.apply_along_axis(fn_isAllTrue, 1, bnpNArrFilter)
-                        fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strPositiveSectionsDir, strNegativeSectionsDir)
-def fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strPositiveSectionsDir, strNegativeSectionsDir):
+        strSections = [name for name in os.listdir(strJobDir) if "Demod" in name]
+        for section in strSections:
+                strStatusDir = os.path.join(strJobDir, section)
+                strValStatusFile = os.path.join(strStatusDir, "val_status.csv")
+                pdDfValStatus = pd.read_csv(strValStatusFile)
+                bnpNArrFilter = (pdDfValStatus.loc[:, ["DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"]] == 1).values
+                bnpNArrFilter = np.apply_along_axis(fn_isAllTrue, 1, bnpNArrFilter)
+                fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strSamplesSectionsDir)
+def fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strSamplesSectionsDir):
         strSectionsDir = os.path.join(strStatusDir, "sections")
         for name in os.listdir(strSectionsDir):
                 strSectionDir = os.path.join(strSectionsDir, name)
-                strPositiveSectionDir = os.path.join(strPositiveSectionsDir, name)
-                if not os.path.exists(strPositiveSectionDir):
-                        os.mkdir(strPositiveSectionDir)
-                strNegativeSectionDir = os.path.join(strNegativeSectionsDir, name)
-                if not os.path.exists(strNegativeSectionDir):
-                        os.mkdir(strNegativeSectionDir)
-                fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strPositiveSectionDir, strNegativeSectionDir)
-def fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strPositiveSectionDir, strNegativeSectionDir):
+                strSamplesSectionDir= os.path.join(strSamplesSectionsDir, name)
+                if not os.path.exists(strSamplesSectionDir):
+                        os.mkdir(strSamplesSectionDir)
+                fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strSamplesSectionDir)
+def fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strSamplesDir):
         strSectionFile = os.path.join(strSectionDir, "status.csv")
-        pdDfSectionStatus = pd.read_csv(strSectionFile)
+        pdDfStatus = pd.read_csv(strSectionFile)
 
-        strPositiveSectionSamplesFile = os.path.join(strPositiveSectionDir, "samples.npy")
-        npNArrPositiveSamples = pdDfSectionStatus.loc[bnpNArrFilter, :].values
-        if os.path.exists(strPositiveSectionSamplesFile):
-                npNArrPositiveFormerRecords = np.load(strPositiveSectionSamplesFile)
-                npNArrPositiveSamples  = np.concatenate((npNArrPositiveFormerRecords, npNArrPositiveSamples), axis=0)
-        np.save(strPositiveSectionSamplesFile, npNArrPositiveSamples)
+        strTrainingSamplesFile = os.path.join(strSamplesDir, "samples.csv")
+        pdDfTrainingSamples = pdDfStatus.loc[bnpNArrFilter, :]
+        if os.path.exists(strTrainingSamplesFile):
+                pdDfFormerTrainingSamples = pd.read_csv(strTrainingSamplesFile)
+                pdDfTrainingSamples  = pd.concat([pdDfFormerTrainingSamples, pdDfTrainingSamples], axis=0)
+        pdDfTrainingSamples.to_csv(strTrainingSamplesFile, index = False)
 
-        strNegativeSectionSamplesFile = os.path.join(strNegativeSectionDir, "samples.npy")
-        npNArrNegativeSamples = pdDfSectionStatus.loc[~bnpNArrFilter, :].values
-        if os.path.exists(strNegativeSectionSamplesFile):
-                npNArrNegativeFormerRecords = np.load(strNegativeSectionSamplesFile)
-                npNArrNegativeSamples  = np.concatenate((npNArrNegativeFormerRecords, npNArrNegativeSamples), axis=0)
-        np.save(strNegativeSectionSamplesFile, npNArrNegativeSamples)
+        strNegativeSamplesFile = os.path.join(strSectionDir, "samples.csv")
+        pdDfNegtiveSamples = pdDfStatus.loc[~bnpNArrFilter, :]
+        pdDfNegtiveSamples.to_csv(strNegativeSamplesFile, index = False)
                 
 if __name__ == "__main__":
         strJobDir = "/home/zswong/workspace/station_code/jobs/JOB201912170654200"
@@ -171,8 +163,8 @@ if __name__ == "__main__":
         "DEMOD_TOTALBITNUMBERJCHL", "DEMOD_ERRORBITNUMBERJCHL", 
         "DEMOD_VITERBI1TOTALBITNUMBER", "DEMOD_VITERBI2TOTALBITNUMBER", "DEMOD_VITERBI1ERRORBITNUMBER", "DEMOD_VITERBI2ERRORBITNUMBER", 
         "DRU_TASKNUMBER1", "DRU_TASKNUMBER2"]}
-        fn_cullTimeEffectOfAJob(mapTypesAndTimeDepentFeatures, strJobDir)
+        #fn_cullTimeEffectOfAJob(mapTypesAndTimeDepentFeatures, strJobDir)
         #fn_regularBoolFeaturesOfAJob(mapBinaryFeaturesAndValidNumber, strJobDir)
         #fn_extractValidRecordsOfAJob(strJobDir)
         #fn_constructSectionsOfAJob(mapSectionsFeatures, strParts, strJobDir)
-        #fn_generateSamplesFromAJob(strJobDir)
+        fn_generateSamplesFromAJob(strJobDir)
