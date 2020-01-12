@@ -8,6 +8,7 @@ import engineer
 import pandas as pd
 strZipsDir = "/home/zswong/workspace/data/zips"
 strJobsDir = "/home/zswong/workspace/station_code/jobs"        
+strJobsSamplesDir = "/home/zswong/workspace/station_code/samples"
 strJsonFile = "/home/zswong/workspace/project/features.json"
 with open(strJsonFile, "r") as f:
         mapSectionsAndFeatures = json.load(f)
@@ -24,3 +25,4 @@ for name in os.listdir(strJobsDir):
         engineer.fn_extractValidRecordsOfAJob(strJobDir)
         engineer.fn_constructSectionsOfAJob(mapSectionsAndFeatures, strParts, strJobDir)
         engineer.fn_generateSamplesFromAJob(strJobDir)
+secretary.fn_collectSamplesFromJobs(strJobsDir, strJobsSamplesDir)

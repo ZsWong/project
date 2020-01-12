@@ -69,28 +69,32 @@ def fn_buildJobFromZip2Dir(strZipFile, strJobDir):
                                         with open(strDemodFile, "wb") as f1:
                                                 f1.write(f.read())
 
-"""
-Input the type of samples needed to collect.
-"""
-def fn_collectSamplesFromJobs(strSamplesType, strSectionName, strJobsDir):
-        npNArrs = []
+def fn_collectSamplesFromJobs(strJobsDir, strJobsSamplesDir):
+        if os.path.exists(strJobsSamplesDir):
+                shutil.rmtree(strJobsSamplesDir)
+        strJobsSectionsSamplesDir = os.path.join(strJobsSamplesDir, "sections")
+        os.makedirs(strJobsSectionsSamplesDir)
+        strFirstJobDir = os.path.join(strJobsDir, os.listdir(strJobsDir)[0])
+        strSectionsNames = os.listdir(os.path.join(strFirstJobDir, "samples/sections"))
+        fn_collectSamplesOfSections(strSectionsNames, strJobsDir, strJobsSectionsSamplesDir)
+def fn_collectSamplesOfSections(strSectionsNames, strJobsDir, strJobsSectionsSamplesDir):
+        for section in strSectionsNames:
+                strJobsSectionSamplesDir = os.path.join(strJobsSectionsSamplesDir, section)
+                os.mkdir(strJobsSectionSamplesDir)
+                pdDfSamplesList = fn_collectSectionSamplesFromJobs(section, strJobsDir)
+                pdDfSamples = pd.concat(pdDfSamplesList)
+                strJobsSectionSamplesFile = os.path.join(strJobsSectionSamplesDir, "samples.csv")
+                pdDfSamples.to_csv(strJobsSectionSamplesFile, index = False)
+def fn_collectSectionSamplesFromJobs(strSection, strJobsDir):
+        pdDfSamplesList = []
         for name in os.listdir(strJobsDir):
                 strJobDir = os.path.join(strJobsDir, name)
-                npNArrs.append(fn_collectSamplesFromAJob(strSamplesType, strSectionName, strJobDir))
-        npNArrSamples = np.concatenate(npNArrs)
-        print(npNArrSamples.shape)
-        return npNArrSamples
-def fn_collectSamplesFromAJob(strSamplesType, strSectionName, strJobDir):
-        strSamplesDir = os.path.join(strJobDir, "samples")
-        strPositiveOrNegativeSamplesDir = os.path.join(strSamplesDir, strSamplesType)
-        strSectionSamplesDir = os.path.join(strPositiveOrNegativeSamplesDir, "sections/" + strSectionName)
-        strSamplesFile = os.path.join(strSectionSamplesDir, "samples.npy")
-        npNArrSamples = np.load(strSamplesFile)
-        print(npNArrSamples.shape)
-        return npNArrSamples
+                strSamplesFile = os.path.join(strJobDir, "samples/sections/" + strSection + "/samples.csv")
+                pdDfSamples = pd.read_csv(strSamplesFile)
+                pdDfSamplesList.append(pdDfSamples)
+        return pdDfSamplesList
 
-"""
-"""
+
 def fn_outputLeftFeatures(strJsonFile, strDataBaseFile, strOutputFile):
         with open(strJsonFile, "r") as f:
                 mapPartsAndFeatures = json.load(f)
