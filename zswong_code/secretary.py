@@ -84,8 +84,9 @@ def fn_buildJobDirFromZipsDir(strJobsDir, strJobName, strZipsDir):
                                 # Extract the name of the demod
                                 strDemodFileName = re.search(r"[a-zA-Z0-9]*?\.csv", name)[0]
                                 strDemodDir = os.path.join(strJobDir, os.path.splitext(strDemodFileName)[0])
-                                os.mkdir(strDemodDir)
-                                strDemodFile = os.path.join(strDemodDir,  "raw_status.csv")
+                                strRawStatusDir = os.path.join(strDemodDir, "raw")
+                                os.makedirs(strRawStatusDir)
+                                strDemodFile = os.path.join(strRawStatusDir,  "status.csv")
                                 with oZipFile.open(name) as f:
                                         with open(strDemodFile, "wb") as f1:
                                                 f1.write(f.read())

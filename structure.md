@@ -8,16 +8,23 @@ JOBXXXXXXXXXXXXXXX
                 status.csv
         parts/
             framelock/
-                regularized/
-                    status.csv
-                samples/
-                    normal/
-                        train/
-                            sections/
-                                input/
-                                    samples.csv
-                                ...
-                    abnormal/
-                        sections/
-                        ...
-            ...
+                input/
+                    valid/
+                        status.csv
+                    regularized/
+                        status.csv
+                    samples/
+                        normal/
+                            train/
+                                samples.csv
+                            test/
+                                samples.csv
+                        abnormal/
+                            test/
+                                samples.csv
+                .
+                .
+                .
+            .
+            .
+            .

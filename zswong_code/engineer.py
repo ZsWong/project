@@ -7,55 +7,91 @@ import shutil
 import xml.etree.ElementTree as ET
 from functools import partial
 
-def fn_extractValidRecordsOfAJob(strJobDir):
+"""
+Extract valid records of a job's status files.
+After this function, the structure of JOBXXXXXX
+will be like below:
+JOBXXXXXXX
+        raw/
+                status.csv
+        valid/
+                status.csv
+"""
+def fn_extractValidRecordsOfJob(strJobDir):
         strWorkSchRepXMLFile = os.path.join(strJobDir, "WorkSch_TASK.xml")
         oETWorkSchRep = ET.parse(strWorkSchRepXMLFile)
-        pdTstmps = fn_getValidPeriod(oETWorkSchRep)
+        tuplePdTimestamps = fn_getValidPeriod(oETWorkSchRep)
 
-        for name in os.listdir(strJobDir):
-                if "Demod" in name:
-                        strStatusDir = os.path.join(strJobDir, name)
-                        fn_extractValidRecords(pdTstmps[0], pdTstmps[1], strStatusDir)
-def fn_extractValidRecords(pdTstmpStart, pdTstmpEnd, strStatusDir):
-        strRegStatusFile = os.path.join(strStatusDir, "culled_status.csv")
-        pdDfRegStatus = pd.read_csv(strRegStatusFile)
-        strpdSeriesFilter = pdDfRegStatus.loc[:, "RECTIME"]
-        pdTstmpSeriesFilter = strpdSeriesFilter.apply(lambda t: pd.Timestamp(t))
-        pdDfFiltered = pdDfRegStatus.loc[(pdTstmpSeriesFilter >= pdTstmpStart) & (pdTstmpSeriesFilter <= pdTstmpEnd), :]
-        strValStatusFile = os.path.join(strStatusDir, "val_status.csv")
-        pdDfFiltered.to_csv(strValStatusFile, index = False)
+        listStrDemodNames = [name for name in os.listdir(strJobDir) if "Demod" in name]
+        for name in listStrDemodNames:
+                strStatusDir = os.path.join(strJobDir, name)
+                fn_extractValidRecordsOfRawStatus(tuplePdTimestamps[0],tuplePdTimestamps[1], strStatusDir)
+def fn_extractValidRecordsOfRawStatus(pdTimestampStart, pdTimestampEnd, strStatusDir):
+        strValidStatusDir = os.path.join(strStatusDir, "valid")
+        if os.path.exists(strValidStatusDir):
+                shutil.rmtree(strValidStatusDir)
+        os.mkdir(strValidStatusDir)
+        
+        strRawStatusFile = os.path.join(strStatusDir, "raw/status.csv")
+        pdDfRawStatus = pd.read_csv(strRawStatusFile)
+        strpdSeriesFilter = pdDfRawStatus.loc[:, "RECTIME"]
+        pdTimestampSeriesFilter = strpdSeriesFilter.apply(lambda t: pd.Timestamp(t))
+        pdDfFiltered = pdDfRawStatus.loc[(pdTimestampSeriesFilter >= pdTimestampStart) & (pdTimestampSeriesFilter <= pdTimestampEnd), :]
+        strValidStatusFile = os.path.join(strValidStatusDir, "status.csv")
+        pdDfFiltered.to_csv(strValidStatusFile, index = False)
 def fn_getValidPeriod(oETWorkSchRep):
-         strReceivingStartTime = "/content/equipmentInfo/receivingStartTime"
-         strReceivingEndTime = "/content/equipmentInfo/receivingEndTime"
-         opdTstmpStart = pd.Timestamp(oETWorkSchRep.find(strReceivingStartTime).text)
-         opdTstmpEnd = pd.Timestamp(oETWorkSchRep.find(strReceivingEndTime).text)
-         return opdTstmpStart, opdTstmpEnd
+         strReceivingStartTime = "./content/equipmentInfo/receivingStartTime"
+         strReceivingEndTime = "./content/equipmentInfo/receivingEndTime"
+         opdTimestampStart = pd.Timestamp(oETWorkSchRep.find(strReceivingStartTime).text)
+         opdTimestampEnd = pd.Timestamp(oETWorkSchRep.find(strReceivingEndTime).text)
+         return opdTimestampStart, opdTimestampEnd
 
-def fn_constructSectionsOfAJob(mapNamePart, strParts, strJobDir):
-        for name in os.listdir(strJobDir):
-                if "Demod" in name:
-                        strStatusDir = os.path.join(strJobDir, name)
-                        strSectionsDir = os.path.join(strStatusDir, "sections")
-                        if os.path.exists(strSectionsDir):
-                                shutil.rmtree(strSectionsDir)
-                        os.mkdir(strSectionsDir)
-                        fn_constructSectionsOfAStatus(mapNamePart, strParts, strStatusDir, strSectionsDir)
-def fn_constructSectionsOfAStatus(mapNamePart, strParts, strStatusDir, strSectionsDir):
-        strValStatusFile = os.path.join(strStatusDir, "val_status.csv")
-        pdDfValStatus = pd.read_csv(strValStatusFile)
-        for i in range(len(strParts)):
-                pdDfStatusFiltered = fn_filterStatus(mapNamePart,strParts[:i + 1], pdDfValStatus)
-                strSectionName = "_".join(strParts[:i + 1]) 
-                strSectionFile = os.path.join(strSectionsDir, strSectionName)
-                os.mkdir(strSectionFile)
-                strSectionStatusFile = os.path.join(strSectionFile, "status.csv")
-                pdDfStatusFiltered.to_csv(strSectionStatusFile, index = False)
-def fn_filterStatus(mapNamePart, strParts, pdDfStatus):
-        strFeaturesFilter = []
-        for part in strParts:
-                strFeaturesFilter += mapNamePart[part]
-        pdDfStatusFiltered = pdDfStatus.filter(strFeaturesFilter)
-        return pdDfStatusFiltered
+"""
+Construct empty parts directory in status directories
+After calling this function, the structure of JOBXXXXXXXX
+will be like below:
+JOBXXXXXXXXX
+        raw/
+                status.csv
+        valid/
+                status.csv
+        parts/
+"""
+def fn_constructPartsOfJob(strJobDir):
+        listStrDemodNames = [name for name in os.listdir(strJobDir) if "Demod" in name]
+        for name in listStrDemodNames:
+                strStatusDir = os.path.join(strJobDir, name)
+                fn_constructPartsOfStatus(strStatusDir)
+def fn_constructPartsOfStatus(strStatusDir):
+        strPartsDir = os.path.join(strStatusDir, "parts")
+        if os.path.exists(strPartsDir):
+                shutil.rmtree(strPartsDir)
+        os.mkdir(strPartsDir)
+
+
+def fn_constructSectionOfJob(listStrFeatures, strPart, strSection, strJobDir):
+        listStrDemodNames = [name for name in os.listdir(strJobDir) if "Demod" in name]
+        for name in listStrDemodNames:
+                strStatusDir = os.path.join(strJobDir, name)
+                fn_constructSectionOfStatus(listStrFeatures, strPart, strSection, strStatusDir)
+def fn_constructSectionOfStatus(listStrFeatures, strPart, strSection, strStatusDir):
+        # To make sure that part directory is existing.
+        strPartDir = os.path.join(strStatusDir + "/parts", strPart)
+        if not os.path.exists(strPartDir):
+                os.mkdir(strPartDir)
+        # To clean up section directory.
+        strSectionDir = os.path.join(strPartDir, strSection)
+        if os.path.exists(strSectionDir):
+                shutil.rmtree(strSectionDir)
+        os.mkdir(strSectionDir)
+
+        # Filter out features contained in the section.
+        strValidStatusFile = os.path.join(strStatusDir, "valid/status.csv")
+        print(strValidStatusFile)
+        pdDfValidStatus = pd.read_csv(strValidStatusFile)
+        pdDfSectionStatus = pdDfValidStatus[listStrFeatures]
+        strSectionStatusFile = os.path.join(strSectionDir, "status.csv")
+        pdDfSectionStatus.to_csv(strSectionStatusFile, index = False)
 
 def fn_regularBoolFeaturesOfAJob(mapBinaryFeaturesAndValidNumber, strJobDir):
         for name in os.listdir(strJobDir):
@@ -150,7 +186,18 @@ def fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strSamplesDir):
         pdDfNegtiveSamples.to_csv(strNegativeSamplesFile, index = False)
                 
 if __name__ == "__main__":
-        strJobDir = "/home/zswong/workspace/station_code/jobs/JOB201912170654200"
+        strJobsDir = "d:/docker_for_winter/jobs"
+        
+        for name in os.listdir(strJobsDir):
+                strJobDir = os.path.join(strJobsDir, name)
+                fn_constructSectionOfJob(["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"], 
+        "framelock", "input", strJobDir)
+        """
+        for job in os.listdir(strJobsDir):
+                strJobDir = os.path.join(strJobsDir, job)
+                fn_constructPartsOfJob(strJobDir)
+        """
+        """
         mapSectionsFeatures = {"input": ["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"],
         "carrierlock": ["DEMOD_CARRIERLOCK", "DEMOD_CARRIEROFFSET"],
         "bitlock": ["DEMOD_BITLOCK", "DEMOD_BITLOCKQCHL", "DEMOD_BITRATEOFFSET"]
@@ -168,3 +215,4 @@ if __name__ == "__main__":
         #fn_extractValidRecordsOfAJob(strJobDir)
         #fn_constructSectionsOfAJob(mapSectionsFeatures, strParts, strJobDir)
         fn_generateSamplesFromAJob(strJobDir)
+        """
