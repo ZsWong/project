@@ -10,7 +10,7 @@ def fn_copyZipsToDstDir(strZipsSrcDir, strZipsDstDir):
 
 
 if __name__ == "__main__":
-        strZipsSrcDir = "/home/zswong/repository/detection/data/zips"
-        strZipsDstDir = "/home/zswong/workspace/data/zips"
+        strZipsSrcDir = "d:\\zips"
+        strZipsDstDir = ""
         #os.mkdir(strZipsDstDir)
         fn_copyZipsToDstDir(strZipsSrcDir, strZipsDstDir)

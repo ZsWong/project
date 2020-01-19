@@ -1,0 +1,23 @@
+JOBXXXXXXXXXXXXXXX
+    WorkSch_TASK.xml
+    Demod/
+        status/
+            raw/
+                status.csv
+            valid/
+                status.csv
+        parts/
+            framelock/
+                regularized/
+                    status.csv
+                samples/
+                    normal/
+                        train/
+                            sections/
+                                input/
+                                    samples.csv
+                                ...
+                    abnormal/
+                        sections/
+                        ...
+            ...
