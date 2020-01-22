@@ -9,8 +9,7 @@ JOBXXXXXXXXXXXXXXX
         parts/
             framelock/
                 input/
-                    valid/
-                        status.csv
+                    status.csv
                     regularized/
                         status.csv
                     samples/
@@ -20,8 +19,7 @@ JOBXXXXXXXXXXXXXXX
                             test/
                                 samples.csv
                         abnormal/
-                            test/
-                                samples.csv
+                            samples.csv
                 .
                 .
                 .

@@ -87,27 +87,32 @@ def fn_constructSectionOfStatus(listStrFeatures, strPart, strSection, strStatusD
 
         # Filter out features contained in the section.
         strValidStatusFile = os.path.join(strStatusDir, "valid/status.csv")
-        print(strValidStatusFile)
         pdDfValidStatus = pd.read_csv(strValidStatusFile)
         pdDfSectionStatus = pdDfValidStatus[listStrFeatures]
         strSectionStatusFile = os.path.join(strSectionDir, "status.csv")
         pdDfSectionStatus.to_csv(strSectionStatusFile, index = False)
 
-def fn_regularBoolFeaturesOfAJob(mapBinaryFeaturesAndValidNumber, strJobDir):
-        for name in os.listdir(strJobDir):
-                if "Demod" in name:
-                        strStatusDir = os.path.join(strJobDir, name)
-                        fn_regularBoolFeaturesOfAStatus(mapBinaryFeaturesAndValidNumber, strStatusDir)
-def fn_regularBoolFeaturesOfAStatus(mapBinaryFeaturesAndValidNumber, strStatusDir):
-        strRawStatusFile = os.path.join(strStatusDir, "raw_status.csv")
-        pdDfRawStatus = pd.read_csv(strRawStatusFile)
+def fn_regularSectionOfJob(mapBinaryFeaturesAndValidNumber, strPart, strSection, strJobDir):
+        listStrSectionNames = [name for name in os.listdir(strJobDir) if "Demod" in name]
+        for name in listStrSectionNames:
+                strStatusDir = os.path.join(strJobDir, name)
+                fn_regularSectionOfStatus(mapBinaryFeaturesAndValidNumber, strPart, strSection, strStatusDir)
+def fn_regularSectionOfStatus(mapBinaryFeaturesAndValidNumber, strPart, strSection, strStatusDir):
+        strSectionDir = os.path.join(strStatusDir, "parts/" + os.path.join(strPart, strSection))
+        strRegularizedSectionDir = os.path.join(strSectionDir, "regularized")
+        if os.path.exists(strRegularizedSectionDir):
+                shutil.rmtree(strRegularizedSectionDir)
+        os.mkdir(strRegularizedSectionDir)
+
+        strSectionStatusFile = os.path.join(strSectionDir, "status.csv")
+        pdDfValidSectionStatus = pd.read_csv(strSectionStatusFile)
         for feature, number in mapBinaryFeaturesAndValidNumber.items():
-                pdSeries = pdDfRawStatus.loc[:, feature]
+                pdSeries = pdDfValidSectionStatus.loc[:, feature]
                 pdSeriesResult = pd.Series(np.zeros(pdSeries.size))
                 pdSeriesResult[pdSeries == number] = 1
-                pdDfRawStatus.loc[:, feature] = pdSeriesResult
-        strRegStatusFile = os.path.join(strStatusDir, "reg_status.csv")
-        pdDfRawStatus.to_csv(strRegStatusFile, index = False)
+                pdDfValidSectionStatus.loc[:, feature] = pdSeriesResult
+        strRegularizedSectionStatusFile = os.path.join(strRegularizedSectionDir, "status.csv")
+        pdDfValidSectionStatus.to_csv(strRegularizedSectionStatusFile, index = False)
 
 def fn_cullTimeEffectOfAJob(mapTypesAndTimeDepentFeatures, strJobDir):
         for name in os.listdir(strJobDir):
@@ -140,58 +145,111 @@ it's input parameter.
 """
 callable objec为t
 """
+
+"""
+Below is a function defined to be used in np.apply_along_axis().
+If elements in a row of numpy darray are all true, then return 
+true for this row.
+"""
 def fn_isAllTrue(bnpNArr):
         for  b in bnpNArr:
                 if not b:
                         return False
         return True
-def fn_generateSamplesFromAJob(strJobDir):
-        strSamplesDir = os.path.join(strJobDir, "samples")
+"""
+Generate samples of a sectino of a job.
+After this function, the structure of directory is like below:
+part/
+        section/
+                samples/
+                        normal/
+                                test/
+                                        samples.csv
+                                train/
+                                        samples.csv
+                        abnormal/
+                                sample.csv
+"""
+def fn_generateSamplesFromSectionOfJob(strPart, strSection, strJobDir):
+        listStrStatusNames = [name for name in os.listdir(strJobDir) if "Demod" in name]
+        for name in listStrStatusNames:
+                strStatusDir = os.path.join(strJobDir, name)
+                bNpNArrNormalIndexes, bNpNArrAbnormalIndexes= fn_getNormalIndexes(strPart, strStatusDir)
+                fn_generateSamplesFromSectionOfStatus(bNpNArrNormalIndexes, bNpNArrAbnormalIndexes, 
+                strPart, strSection, strStatusDir)
+"""
+Get the indexes of normal records according to the flag features given
+by "part".
+Note that a part's samples should only be sampled from normal samples of 
+apprentice parts.
+"""
+def fn_getNormalIndexes(strPart, strStatusDir):
+        strValidStatusFile = os.path.join(strStatusDir, "valid/status.csv")
+        pdDfValidStatus = pd.read_csv(strValidStatusFile)
+        bNpNArrFilter = (pdDfValidStatus.loc[:, ["DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"]] == 2).values
+        bNpNArrFilter = np.apply_along_axis(fn_isAllTrue, 1, bNpNArrFilter)
+        if strPart == "framelock":
+                return bNpNArrFilter, ~bNpNArrFilter
+def fn_generateSamplesFromSectionOfStatus(bNpNArrNormalIndexes, bNpNArrAbnormalIndexes, strPart, strSection, strStatusDir):
+        strSamplesDir = os.path.join(strStatusDir, "parts/" + os.path.join(strPart, strSection + "/samples"))
         if os.path.exists(strSamplesDir):
                 shutil.rmtree(strSamplesDir)
-        strSamplesSectionsDir = os.path.join(strSamplesDir, "sections")
-        os.makedirs(strSamplesSectionsDir)
-        """
-        name is like "Demodx"
-        """
-        strSections = [name for name in os.listdir(strJobDir) if "Demod" in name]
-        for section in strSections:
-                strStatusDir = os.path.join(strJobDir, section)
-                strValStatusFile = os.path.join(strStatusDir, "val_status.csv")
-                pdDfValStatus = pd.read_csv(strValStatusFile)
-                bnpNArrFilter = (pdDfValStatus.loc[:, ["DPU_FRAMESYNCSTATUS1", "DPU_FRAMESYNCSTATUS2"]] == 1).values
-                bnpNArrFilter = np.apply_along_axis(fn_isAllTrue, 1, bnpNArrFilter)
-                fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strSamplesSectionsDir)
-def fn_generateSamplesOfAStatus(bnpNArrFilter, strStatusDir, strSamplesSectionsDir):
-        strSectionsDir = os.path.join(strStatusDir, "sections")
-        for name in os.listdir(strSectionsDir):
-                strSectionDir = os.path.join(strSectionsDir, name)
-                strSamplesSectionDir= os.path.join(strSamplesSectionsDir, name)
-                if not os.path.exists(strSamplesSectionDir):
-                        os.mkdir(strSamplesSectionDir)
-                fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strSamplesSectionDir)
-def fn_generateSamplesFromASection(bnpNArrFilter, strSectionDir, strSamplesDir):
-        strSectionFile = os.path.join(strSectionDir, "status.csv")
-        pdDfStatus = pd.read_csv(strSectionFile)
+        os.mkdir(strSamplesDir)
 
-        strTrainingSamplesFile = os.path.join(strSamplesDir, "samples.csv")
-        pdDfTrainingSamples = pdDfStatus.loc[bnpNArrFilter, :]
-        if os.path.exists(strTrainingSamplesFile):
-                pdDfFormerTrainingSamples = pd.read_csv(strTrainingSamplesFile)
-                pdDfTrainingSamples  = pd.concat([pdDfFormerTrainingSamples, pdDfTrainingSamples], axis=0)
-        pdDfTrainingSamples.to_csv(strTrainingSamplesFile, index = False)
+        strSectionDir = os.path.join(strStatusDir, "parts/" + os.path.join(strPart, strSection))
+        if strPart == "framelock":
+                if strSection == "input":
+                        strSectionStatusFile = os.path.join(strSectionDir, "status.csv")
+                        pdDfSectionStatus = pd.read_csv(strSectionStatusFile)
 
-        strNegativeSamplesFile = os.path.join(strSectionDir, "samples.csv")
-        pdDfNegtiveSamples = pdDfStatus.loc[~bnpNArrFilter, :]
-        pdDfNegtiveSamples.to_csv(strNegativeSamplesFile, index = False)
-                
+
+        pdDfAbnormalSamples = pdDfSectionStatus.loc[bNpNArrAbnormalIndexes, :]
+        strAbnormalSamplesDir = os.path.join(strSamplesDir, "abnormal")
+        os.mkdir(strAbnormalSamplesDir)
+        strAbnormalSamplesFile = os.path.join(strAbnormalSamplesDir, "samples.csv")
+        pdDfAbnormalSamples.to_csv(strAbnormalSamplesFile, index = False)
+
+        pdDfNormalSamples = pdDfSectionStatus.loc[bNpNArrNormalIndexes, :]
+        pdDfNormalTestSamples, pdDfNormalTrainSamples = fn_splitTestAndTrain(pdDfNormalSamples, 0.20)
+        strNormalSamplesDir = os.path.join(strSamplesDir, "normal")
+        os.mkdir(strNormalSamplesDir)
+        strNormalTestSamplesDir = os.path.join(strNormalSamplesDir, "test")
+        os.mkdir(strNormalTestSamplesDir)
+        strNormalTestSamplesFile = os.path.join(strNormalTestSamplesDir, "samples.csv")
+        pdDfNormalTestSamples.to_csv(strNormalTestSamplesFile, index = False)
+        strNormalTrainSamplesDir = os.path.join(strNormalSamplesDir, "train")
+        os.mkdir(strNormalTrainSamplesDir)
+        strNormalTrainSamplesFile = os.path.join(strNormalTrainSamplesDir, "samples.csv")
+        pdDfNormalTrainSamples.to_csv(strNormalTrainSamplesFile, index = False)
+"""
+Split normal samples into test and train. 
+In order to generate same samples every time, I use 
+a np.random.seed(42) before generate shuffling indexes.
+"""
+def fn_splitTestAndTrain(pdDfTotalSamples, fPercent):
+        nSamples = pdDfTotalSamples.shape[0]
+        nTestSamples = int(nSamples * fPercent)
+        np.random.seed(42)
+        npNArrIndexes = np.random.permutation(nSamples)
+        return pdDfTotalSamples.loc[npNArrIndexes[:nTestSamples], :], pdDfTotalSamples.loc[npNArrIndexes[nTestSamples:], :]
+
 if __name__ == "__main__":
         strJobsDir = "d:/docker_for_winter/jobs"
         
         for name in os.listdir(strJobsDir):
                 strJobDir = os.path.join(strJobsDir, name)
-                fn_constructSectionOfJob(["DEMOD_IFLEVEL", "DEMOD_EBNOVALUE", "DEMOD_EBNOVALUEQCHL"], 
-        "framelock", "input", strJobDir)
+                fn_generateSamplesFromSectionOfJob("framelock", "input", strJobDir)
+        """
+        for name in os.listdir(strJobsDir):
+                strJobDir = os.path.join(strJobsDir, name)
+                fn_regularSectionOfJob({"DEMOD_CARRIERLOCK": 2}, "framelock", "carrierlock", strJobDir)
+        """
+        """
+        for name in os.listdir(strJobsDir):
+                strJobDir = os.path.join(strJobsDir, name)
+                fn_constructSectionOfJob(["DEMOD_CARRIERLOCK", "DEMOD_CARRIEROFFSET"], 
+        "framelock", "carrierlock", strJobDir)
+        """
         """
         for job in os.listdir(strJobsDir):
                 strJobDir = os.path.join(strJobsDir, job)
