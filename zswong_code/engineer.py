@@ -231,10 +231,10 @@ def fn_splitTestAndTrain(pdDfTotalSamples, fPercent):
         nTestSamples = int(nSamples * fPercent)
         np.random.seed(42)
         npNArrIndexes = np.random.permutation(nSamples)
-        return pdDfTotalSamples.loc[npNArrIndexes[:nTestSamples], :], pdDfTotalSamples.loc[npNArrIndexes[nTestSamples:], :]
+        return pdDfTotalSamples.iloc[npNArrIndexes[:nTestSamples], :], pdDfTotalSamples.iloc[npNArrIndexes[nTestSamples:], :]
 
 if __name__ == "__main__":
-        strJobsDir = "d:/docker_for_winter/jobs"
+        strJobsDir = "D:\\docker_for_winter\\jobs"
         
         for name in os.listdir(strJobsDir):
                 strJobDir = os.path.join(strJobsDir, name)
